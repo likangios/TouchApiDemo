@@ -80,31 +80,65 @@
         });
     }
     else if (btn.tag == 999) {
-        [self longTouch:CGPointMake(self.firstItemCenterX+200, self.firstItemCenterY)];
-        return;
-        _taskStart = YES;
-        CGPoint point = CGPointMake(self.firstItemCenterX, self.firstItemCenterY);
+        [self beginSearchTask];
+    }
+}
+- (void)beginSearchTask{
+    _taskStart = YES;
+    self.index ++;
+    [self longTouch:CGPointMake(self.firstItemCenterX+200, self.firstItemCenterY-20)];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        NSLog(@"2");
+        [self addTestView:CGPointMake(UIScreen.mainScreen.bounds.size.width/2.0, UIScreen.mainScreen.bounds.size.height - 90)];
+        
+//        [self SimulateTouch:CGPointMake(UIScreen.mainScreen.bounds.size.width/2.0, UIScreen.mainScreen.bounds.size.height - 90)];
+    });
+//    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+//        UIPasteboard *paste =[UIPasteboard generalPasteboard];
+//        NSLog(@"paste.string is %@",paste.string);
+//    });
+
+    
+    /*
+    sleep(1);
+
+    if ([paste.string isEqualToString:self.searchUrl]) {
+        NSString *msg = [NSString stringWithFormat:@"找到了指定的商品在 %ld 位",_index];
+        UIAlertView *alert = [[UIAlertView alloc]initWithTitle:@"提醒" message:@"" delegate:msg cancelButtonTitle:nil otherButtonTitles:@"OK", nil];
+        [alert show];
+    }
+    else{
+        if (self.index == 5) {
+            NSLog(@"index == 5");
+
+            CGPoint point = CGPointMake(self.firstItemCenterX, self.cellHeight);
+            [self swipeTouchFrom:CGPointMake(point.x, point.y + self.adHeight) To:CGPointMake(point.x, 0)];
+            
+        }
+        else{
+            NSLog(@"index != 5");
+
+            CGPoint point = CGPointMake(self.firstItemCenterX, self.cellHeight);
+            [self swipeTouchFrom:CGPointMake(point.x, point.y) To:CGPointMake(point.x, 0)];
+            
+        }
+    }
+    */
+
+}
+- (void)addTestView:(CGPoint)point{
         UIView *test = [UIView new];
         test.center = point;
         test.backgroundColor = [UIColor redColor];
         test.bounds = CGRectMake(0, 0, 10, 10);
-        [self.view addSubview:test];
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self.view.window addSubview:test];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             [test removeFromSuperview];
         });
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            [self SimulateTouch:point];
-        });
-
-
-
-    }
 }
 - (void)SimulateTouch:(CGPoint)point{
-    
     NSInteger pointId = [PTFakeMetaTouch fakeTouchId:[PTFakeMetaTouch getAvailablePointId] AtPoint:point withTouchPhase:UITouchPhaseBegan];
     [PTFakeMetaTouch fakeTouchId:pointId AtPoint:point withTouchPhase:UITouchPhaseEnded];
-    
 }
 - (void)swipeTouchFrom:(CGPoint)fromPoint To:(CGPoint)toPoint{
     
@@ -117,8 +151,8 @@
 - (void)longTouch:(CGPoint)point{
     NSInteger pointId = [PTFakeMetaTouch fakeTouchId:[PTFakeMetaTouch getAvailablePointId] AtPoint:point withTouchPhase:UITouchPhaseBegan];
     [PTFakeMetaTouch fakeTouchId:pointId AtPoint:point withTouchPhase:UITouchPhaseStationary];
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [PTFakeMetaTouch fakeTouchId:pointId AtPoint:point withTouchPhase:UITouchPhaseCancelled];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+    [PTFakeMetaTouch fakeTouchId:pointId AtPoint:point withTouchPhase:UITouchPhaseCancelled];
     });
 
 }
@@ -198,6 +232,8 @@
 
 - (BOOL)webView:(UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType{
   
+    return YES;
+    
     if (_taskStart) {
         _index ++;
         NSLog(@"click url is %@",request.URL.absoluteString);
