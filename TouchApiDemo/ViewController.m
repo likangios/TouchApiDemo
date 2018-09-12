@@ -9,7 +9,7 @@
 #import "ViewController.h"
 #import <PTFakeTouch/PTFakeTouch.h>
 #import <PTFakeTouch/PTFakeMetaTouch.h>
-@interface ViewController ()<UIWebViewDelegate>
+@interface ViewController ()<UIWebViewDelegate,UINavigationControllerDelegate>
 
 
 @property(nonatomic,assign) BOOL  taskStart;
@@ -19,6 +19,16 @@
 @property(nonatomic,strong) UIWebView *webView;
 
 @property(nonatomic,strong) NSString *searchUrl;
+
+@property(nonatomic,assign) CGFloat firstItemCenterY;
+
+@property(nonatomic,assign) CGFloat firstItemCenterX;
+
+@property(nonatomic,assign) CGFloat cellHeight;
+
+@property(nonatomic,assign) CGFloat adHeight;
+
+@property(nonatomic,assign) CGFloat containerOffsetY;
 
 
 @property(nonatomic,strong) UIButton *searchBarBtn;
@@ -33,12 +43,15 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    _searchUrl = @"https://a.m.taobao.com/i568668878625.htm?spm=0.0.0.0.pWuCwc&abtest=4&rn=0f3f12cb45d1db6b5150bd128ee0c931&sid=8faa46b65b7ee1cbfa097c98b8452dc6";
-    _index = 1;
+    self.firstItemCenterX = 6 + 8 + 50;
+    _searchUrl = @"https://a.m.taobao.com/i553286962768.htm?spm=0.0.0.0.hyfCSJ&abtest=16&rn=f66886f409d758bf040e601524211692&sid=c5c8536d86ea235b44af6853401a80c1";
+    _index = 0;
     _taskStart = NO;
     _webView = [[UIWebView alloc]initWithFrame:self.view.bounds];
     [_webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"https://h5.m.taobao.com/"]]];
     _webView.delegate = self;
+//    _webView.scrollView.decelerationRate = 0.001;
+    _webView.scrollView.bouncesZoom = NO;
     [self.view addSubview:_webView];
 
     [self.webView addSubview:self.searchBarBtn];
@@ -67,10 +80,23 @@
         });
     }
     else if (btn.tag == 999) {
+        [self longTouch:CGPointMake(self.firstItemCenterX+200, self.firstItemCenterY)];
+        return;
         _taskStart = YES;
-        
+        CGPoint point = CGPointMake(self.firstItemCenterX, self.firstItemCenterY);
         UIView *test = [UIView new];
-        test.center = CGPointMake(100, 120);
+        test.center = point;
+        test.backgroundColor = [UIColor redColor];
+        test.bounds = CGRectMake(0, 0, 10, 10);
+        [self.view addSubview:test];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [test removeFromSuperview];
+        });
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [self SimulateTouch:point];
+        });
+
+
 
     }
 }
@@ -84,25 +110,33 @@
     
     NSInteger pointId2 = [PTFakeMetaTouch fakeTouchId:[PTFakeMetaTouch getAvailablePointId] AtPoint:fromPoint withTouchPhase:UITouchPhaseBegan];
     [PTFakeMetaTouch fakeTouchId:pointId2 AtPoint:toPoint withTouchPhase:UITouchPhaseMoved];
-    [PTFakeMetaTouch fakeTouchId:pointId2 AtPoint:toPoint withTouchPhase:UITouchPhaseEnded];
+    [PTFakeMetaTouch fakeTouchId:pointId2 AtPoint:toPoint withTouchPhase:UITouchPhaseCancelled];
+    
+    NSLog(@"swipe from:(%f,%f) to:(%f,%f)",fromPoint.x,fromPoint.y,toPoint.x,toPoint.y);
+}
+- (void)longTouch:(CGPoint)point{
+    NSInteger pointId = [PTFakeMetaTouch fakeTouchId:[PTFakeMetaTouch getAvailablePointId] AtPoint:point withTouchPhase:UITouchPhaseBegan];
+    [PTFakeMetaTouch fakeTouchId:pointId AtPoint:point withTouchPhase:UITouchPhaseStationary];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [PTFakeMetaTouch fakeTouchId:pointId AtPoint:point withTouchPhase:UITouchPhaseCancelled];
+    });
+
 }
 - (void)webViewDidFinishLoad:(UIWebView *)webView{
     
-    
+//    UIScrollView *scr = [webView valueForKeyPath:@"_UIWebViewScrollView"];
+//    scr.decelerationRate = 0.01;
+//    
 //    NSString *lJs = @"document.documentElement.innerHTML";//获取当前网页的html
 //
 //     NSString *currentHTML = [webView stringByEvaluatingJavaScriptFromString:lJs];
-
-    
-    NSMutableString *address = [NSMutableString string];
-    // 6.1首先获取到该标签元素
-//    [address appendString:@"var mark = document.getElementsByClassName(\"mark\")[0];"];
-    // 6.2获取到该标签元素的文本内容
-//    [address appendString:@"mark.height"];
-    // 6.3输出内容
-//    NSLog(@"======%@", [webView stringByEvaluatingJavaScriptFromString:address]);
-    
-    
+//    [self getInfoWithWebView:webView className:@"list-item"];
+//    [self getInfoWithWebView:webView className:@"toolbar"];
+//    [self getInfoWithWebView:webView className:@"page-container"];
+    self.containerOffsetY = [self getValueWith:@"offsetTop" WebView:webView className:@"page-container"];
+    self.cellHeight = [self getValueWith:@"clientHeight" WebView:webView className:@"mark"];
+    self.adHeight = [self getValueWith:@"clientHeight" WebView:webView className:@"install-app"];
+    self.firstItemCenterY = self.containerOffsetY + self.cellHeight/2.0;
     /*
     //这里是js，主要目的实现对url的获取
     static  NSString * const jsGetImages =
@@ -121,17 +155,72 @@
     //urlResurlt 就是获取到得所有图片的url的拼接；mUrlArray就是所有Url的数组
     NSLog(@"--%@",urlArray);
      */
+}
+- (CGFloat)getValueWith:(NSString *)key WebView:(UIWebView *)webView className:(NSString *)name{
+
+    NSString *element = [NSString stringWithFormat:@"document.getElementsByClassName(\"%@\")[0].",name];
+    NSString *js = [element stringByAppendingString:key];
+    NSString *value = [webView stringByEvaluatingJavaScriptFromString:js];
+    NSLog(@"%@.%@ = %@",name,key,value);
+    return value.integerValue;
+}
+
+- (void)getInfoWithWebView:(UIWebView *)webView  className:(NSString *)name{
     
+    NSString *url = webView.request.URL.absoluteString;
+    NSLog(@"<<<<<<<<<<<<<<<<<<%@>>>>>>>>>>>>>>>>>>>>>",url);
+    NSString *element = [NSString stringWithFormat:@"document.getElementsByClassName(\"%@\")[0].",name];
+    NSString *offsetTop = [element stringByAppendingString:@"offsetTop"];
+    NSString *offsetLeft = [element stringByAppendingString:@"offsetLeft"];
+    NSString *clientWidth = [element stringByAppendingString:@"clientWidth"];
+    NSString *clientHeight = [element stringByAppendingString:@"clientHeight"];
+
+    NSLog(@"%@======offsetTop======%@", name,[webView stringByEvaluatingJavaScriptFromString:offsetTop]);
+    NSLog(@"%@======offsetLeft======%@", name, [webView stringByEvaluatingJavaScriptFromString:offsetLeft]);
+    NSLog(@"%@======clientWidth======%@", name, [webView stringByEvaluatingJavaScriptFromString:clientWidth]);
+    NSLog(@"%@======clientHeight======%@", name, [webView stringByEvaluatingJavaScriptFromString:clientHeight]);
+}
+- (void)getInfoByTagNameWithWebView:(UIWebView *)webView  className:(NSString *)name{
+    
+    NSString *url = webView.request.URL.absoluteString;
+    NSLog(@"<<<<<<<<<<<<<<<<<<%@>>>>>>>>>>>>>>>>>>>>>",url);
+    NSString *element = [NSString stringWithFormat:@"document.getElementsByTagName(\"%@\")[0].",name];
+    NSString *offsetTop = [element stringByAppendingString:@"offsetTop"];
+    NSString *offsetLeft = [element stringByAppendingString:@"offsetLeft"];
+    NSString *clientWidth = [element stringByAppendingString:@"clientWidth"];
+    NSString *clientHeight = [element stringByAppendingString:@"clientHeight"];
+    
+    NSLog(@"%@======offsetTop======%@", name,[webView stringByEvaluatingJavaScriptFromString:offsetTop]);
+    NSLog(@"%@======offsetLeft======%@", name, [webView stringByEvaluatingJavaScriptFromString:offsetLeft]);
+    NSLog(@"%@======clientWidth======%@", name, [webView stringByEvaluatingJavaScriptFromString:clientWidth]);
+    NSLog(@"%@======clientHeight======%@", name, [webView stringByEvaluatingJavaScriptFromString:clientHeight]);
 }
 
 - (BOOL)webView:(UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType{
   
     if (_taskStart) {
         _index ++;
+        NSLog(@"click url is %@",request.URL.absoluteString);
         if ([request.URL.absoluteString isEqualToString:_searchUrl]) {
+            NSString *msg = [NSString stringWithFormat:@"找到了指定的商品在 %ld 位",_index];
+            UIAlertView *alert = [[UIAlertView alloc]initWithTitle:@"提醒" message:@"" delegate:msg cancelButtonTitle:nil otherButtonTitles:@"OK", nil];
+            [alert show];
             return YES;
         }
         else{
+            if (_index == 5) {
+                CGPoint point = CGPointMake(self.firstItemCenterX, self.cellHeight);
+                [self swipeTouchFrom:CGPointMake(point.x, point.y + self.adHeight) To:CGPointMake(point.x, 0)];
+            }
+            else{
+                CGPoint point = CGPointMake(self.firstItemCenterX, self.adHeight);
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                    [self swipeTouchFrom:point To:CGPointMake(point.x, 0)];
+                });
+//                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+//                    [self SimulateTouch:point];
+//                });
+            }
             return NO;
         }
     }
